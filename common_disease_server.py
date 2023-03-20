@@ -5,8 +5,8 @@ import numpy as np
 import pickle
 import pandas as pd
 import json
-# from sentence_transformers import SentenceTransformer, util
-# import re
+from sentence_transformers import SentenceTransformer, util
+import re
 
 app = FastAPI()
 
@@ -30,7 +30,7 @@ with open('model3','rb') as f:
     model3,diseases,sym_attrs = pickle.load(f)
 df = pd.read_csv('Prototype.csv')
 
-# stmodel = SentenceTransformer('STModel')
+stmodel = SentenceTransformer('STModel')
 
 @app.get('/predict')
 def predict(symptoms: list = Query(...)):
@@ -80,36 +80,36 @@ def get_likely_symptoms(symptoms: list = Query(...)):
     js_l2 = json.dumps(l2)
     return l2
 
-# @app.get('/identify_from_desc')
-# def identify_syms(desc: str):
-#     desc = desc.lower().replace("and",",").replace(".",",")
-#     sentences1 = re.split(",", desc)
-#     sentences2 = ['I am having ' + sym for sym in sym_attrs]
-#     # encode list of sentences to get their embeddings
-#     embedding1 = stmodel.encode(sentences1, convert_to_tensor=True)
-#     embedding2 = stmodel.encode(sentences2, convert_to_tensor=True)
-#     # compute similarity scores of two embeddings
-#     cosine_scores = util.pytorch_cos_sim(embedding1, embedding2)
+@app.get('/identify_from_desc')
+def identify_syms(desc: str):
+    desc = desc.lower().replace("and",",").replace(".",",")
+    sentences1 = re.split(",", desc)
+    sentences2 = ['I am having ' + sym for sym in sym_attrs]
+    # encode list of sentences to get their embeddings
+    embedding1 = stmodel.encode(sentences1, convert_to_tensor=True)
+    embedding2 = stmodel.encode(sentences2, convert_to_tensor=True)
+    # compute similarity scores of two embeddings
+    cosine_scores = util.pytorch_cos_sim(embedding1, embedding2)
 
-#     # for i in range(len(sentences1)):
-#     #   print("Sentence 1:", sentences1[i])
-#     #   print("Sentence 2:", sentences2[np.argmax(cosine_scores[i])])
-#     #   print("Similarity Score:", cosine_scores[i][np.argmax(cosine_scores[i])].item())
+    # for i in range(len(sentences1)):
+    #   print("Sentence 1:", sentences1[i])
+    #   print("Sentence 2:", sentences2[np.argmax(cosine_scores[i])])
+    #   print("Similarity Score:", cosine_scores[i][np.argmax(cosine_scores[i])].item())
 
-#     identified_syms = [sentences2[np.argmax(cosine_scores[i])].replace("I am having ",'') for i in range(len(sentences1))]
-#     print(identified_syms)
-#     sym_indices = [np.where(sym_attrs==sym)[0][0] for sym in identified_syms]
-#     x = np.zeros(len(sym_attrs))
-#     for idx in sym_indices:
-#         x[idx]=1
-#     pred1 = model.predict([x])[0]
-#     pred2 = model2.predict([x])[0]
-#     pred3 = model3.predict([x])[0]
-#     pred_l = np.unique([pred1,pred2,pred3])
-#     preds = []
-#     for i in pred_l:
-#         preds.append(diseases[i])
-#     return preds
+    identified_syms = [sentences2[np.argmax(cosine_scores[i])].replace("I am having ",'') for i in range(len(sentences1))]
+    print(identified_syms)
+    sym_indices = [np.where(sym_attrs==sym)[0][0] for sym in identified_syms]
+    x = np.zeros(len(sym_attrs))
+    for idx in sym_indices:
+        x[idx]=1
+    pred1 = model.predict([x])[0]
+    pred2 = model2.predict([x])[0]
+    pred3 = model3.predict([x])[0]
+    pred_l = np.unique([pred1,pred2,pred3])
+    preds = []
+    for i in pred_l:
+        preds.append(diseases[i])
+    return preds
 
 if __name__ == '__main__':
     uvicorn.run(app, host='127.0.0.1', port=8000)
